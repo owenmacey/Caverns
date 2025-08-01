@@ -1,45 +1,67 @@
 using UnityEngine;
 
-public class movement : MonoBehaviour
+public class PlayerMovement : MonoBehaviour
 {
-    //Movement variables
-    public float speed = 5f; // Speed of the object
+    public float moveSpeed = 5f;
+    public float jumpForce = 10f;
+    public LayerMask groundLayer;
+    public Transform groundCheck;
+    public float groundCheckRadius = 0.2f;
+
     private Rigidbody2D rb;
     private float moveInput;
+    private bool jumpPressed;
+    private bool isGrounded;
 
-    //Jumping variables
-    public float jumpForce = 10f;    // How high the player jumps
-    private bool isGrounded;          // Is the player touching the ground?
-    public Transform groundCheck;     // Empty GameObject at player's feet for checking ground
-    public float checkRadius = 0.2f;  // Radius for ground check circle
-    public LayerMask whatIsGround;    // Layer(s) considered ground
-    private bool jumpRequest = false;
+    public float fallMultiplier = 2.5f;
+    public float lowJumpMultiplier = 2f;
 
-    // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         rb = GetComponent<Rigidbody2D>();
     }
-
-    // Update is called once per frame
+    
     void Update()
     {
-        moveInput = Input.GetAxisRaw("Horizontal");
-        isGrounded = Physics2D.OverlapCircle(groundCheck.position, checkRadius, whatIsGround);
+        // Get horizontal input (-1 to 1)
+        moveInput = Input.GetAxis("Horizontal");
 
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        // Detect jump input
+        if (Input.GetButtonDown("Jump"))
         {
-            jumpRequest = true;
+            jumpPressed = true;
         }
     }
-    void FixedUpdate()
-    {
-        rb.velocity = new Vector2(moveInput * speed, rb.velocity.y); // Move the player
 
-        if (jumpRequest)
+    void FixedUpdate()
+    { 
+        // Check if the player is on the ground
+        isGrounded = Physics2D.OverlapCircle(groundCheck.position, groundCheckRadius, groundLayer);
+
+        // Move the player
+        rb.linearVelocity = new Vector2(moveInput * moveSpeed, rb.linearVelocity.y);
+
+        // Handle jump
+        if (jumpPressed && isGrounded)
         {
-            rb.velocity = new Vector2(rb.velocity.x, jumpForce);
-            jumpRequest = false;
+            rb.linearVelocity = new Vector2(rb.linearVelocity.x, jumpForce);
         }
+
+        if (rb.linearVelocity.y < 0)
+        {
+            rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (fallMultiplier - 1) * Time.fixedDeltaTime;
+        }
+        else if (rb.linearVelocity.y > 0 && !Input.GetButton("Jump"))
+        {
+            rb.linearVelocity += Vector2.up * Physics2D.gravity.y * (lowJumpMultiplier - 1) * Time.fixedDeltaTime;
+        }
+
+        if (moveInput == 0)
+        {
+            rb.linearVelocity = new Vector2(0, rb.linearVelocity.y);
+        }
+
+        // Reset jump flag
+        jumpPressed = false;
     }
 }
